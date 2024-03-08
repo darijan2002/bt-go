@@ -1,10 +1,16 @@
 module benc2proto
 
-go 1.21.7
+go 1.22.1
 
-replace benc2proto/proto_structs v0.0.0 => ./proto_structs
+replace benc2proto/proto-structs => /proto-structs
+
+require github.com/stretchr/testify v1.9.0
+
+require google.golang.org/protobuf v1.33.0 // indirect
 
 require (
-	benc2proto/proto_structs v0.0.0 // indirect
-	google.golang.org/protobuf v1.33.0 // indirect
+	benc2proto/proto-structs v0.0.0
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

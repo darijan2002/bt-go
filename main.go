@@ -1,7 +1,7 @@
 package benc2proto
 
 import (
-	"benc2proto/proto-structs"
+	proto_structs "benc2proto/proto-structs"
 	"bufio"
 	"bytes"
 	"io"
@@ -20,16 +20,25 @@ func decodeBencString(reader *bufio.Reader, buffer *bytes.Buffer) string {
 	sizeStr, err := reader.ReadString(':')
 
 	// Read buffer data and transform into int32
-	size, err := strconv.Atoi(strings.TrimSuffix(sizeStr, ":"))
+	buffer.WriteString(strings.TrimSuffix(sizeStr, ":"))
+	fs, err := buffer.ReadString('\n')
+	if err != nil && err != io.EOF {
+		log.Printf("Failed reading buffer, err is %e\n", err)
+	}
+	size, err := strconv.Atoi(fs)
 	if err != nil {
 		log.Println("Error during conversion")
 	}
 
 	// Read that many runes off reader
 	for iSize := size; iSize > 0; iSize-- {
-		rune, _, err := buffer.ReadRune()
+		rune, _, err := reader.ReadRune()
 		if err != nil {
-			log.Println("Errored during the readinbg of a rune")
+			if err == io.EOF {
+				log.Println("Reached EOF")
+				break
+			}
+			log.Printf("Errored during the reading of a rune %s %e\n", string(rune), err)
 		}
 		buffer.WriteRune(rune)
 	}
@@ -37,7 +46,7 @@ func decodeBencString(reader *bufio.Reader, buffer *bytes.Buffer) string {
 	// Cast to string and return
 	data, err := buffer.ReadString('\n')
 	if err != nil && err != io.EOF {
-		log.Println("Failed reading buffer")
+		log.Printf("Failed reading buffer, err is %e\n", err)
 	}
 
 	// Reset buffer
