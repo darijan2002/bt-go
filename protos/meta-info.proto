@@ -1,0 +1,29 @@
+syntax = "proto3";
+package proto_structs;
+
+option go_package = "./proto-structs";
+
+message FileInfo {
+  uint64 length = 1;
+  string path = 2;
+}
+
+message FileInfos {
+  repeated FileInfo infos = 1;
+}
+
+message Info {
+  string name = 1;
+  int32 piece_length = 2;
+  repeated string pieces = 3;
+
+  oneof Data {
+    uint64 length = 4;
+    FileInfos files = 5;
+  }
+}
+
+message MetaInfo {
+  string announce = 1;
+  Info info = 2;
+}
