@@ -4,6 +4,8 @@ import (
 	"benc2proto/proto_structs"
 	"bufio"
 	"bytes"
+	"fmt"
+	"github.com/mitchellh/mapstructure"
 	"io"
 	"log"
 	"os"
@@ -23,19 +25,19 @@ func parseUpcomingProperty(reader *bufio.Reader) (any, BencDataType) {
 	buf.WriteRune(rune)
 
 	if _, err := strconv.Atoi(string(rune)); err == nil {
-		return decodeBencString(reader, buf), BencDataType(STRING)
+		return decodeBencString(reader, buf), BENC_STRING
 	}
 
 	switch rune {
 	case 'i':
-		return decodeBencInt(reader, buf), BencDataType(INT)
+		return decodeBencInt(reader, buf), BENC_INT
 	case 'l':
-		return decodeBencList(reader, buf), BencDataType(LIST)
+		return decodeBencList(reader, buf), BENC_LIST
 	case 'd':
-		return decodeBencDictionary(reader, buf), BencDataType(DICTIONARY)
+		return decodeBencDictionary(reader, buf), BENC_DICTIONARY
 	}
 
-	return nil, BencDataType(UNKNOWN)
+	return nil, BENC_UNKNOWN
 }
 
 func decodeBencString(reader *bufio.Reader, buffer *bytes.Buffer) string {
@@ -54,23 +56,18 @@ func decodeBencString(reader *bufio.Reader, buffer *bytes.Buffer) string {
 	}
 
 	// Read that many runes off reader
-	for iSize := size; iSize > 0; iSize-- {
-		rune, _, err := reader.ReadRune()
-		if err != nil {
-			if err == io.EOF {
-				log.Println("Reached EOF")
-				break
-			}
-			log.Printf("Errored during the reading of a rune %s %e\n", string(rune), err)
-		}
-		buffer.WriteRune(rune)
-	}
+	limReader := io.LimitReader(reader, int64(size))
+	bytesRead, err := buffer.ReadFrom(limReader)
 
-	// Cast to string and return
-	data, err := buffer.ReadString('\n')
 	if err != nil && err != io.EOF {
 		log.Printf("Failed reading buffer, err is %e\n", err)
 	}
+	if bytesRead != int64(size) {
+		log.Println("Read less bytes than needed!")
+	}
+
+	// Cast to string and return
+	data := buffer.String()
 
 	// Reset buffer
 	buffer.Reset()
@@ -101,7 +98,7 @@ func decodeBencList(reader *bufio.Reader, buffer *bytes.Buffer) []any {
 	buffer.Reset()
 
 	data := []any{}
-	for true {
+	for {
 		rune, _, err := reader.ReadRune()
 
 		// Once we hit an 'e', return the list of data
@@ -128,7 +125,7 @@ func decodeBencDictionary(reader *bufio.Reader, buffer *bytes.Buffer) map[string
 
 	data := map[string]any{}
 	// Read data from reader and add to buffer
-	for true {
+	for {
 		rune, _, err := reader.ReadRune()
 
 		// Once we hit an 'e', return the list of data
@@ -142,7 +139,7 @@ func decodeBencDictionary(reader *bufio.Reader, buffer *bytes.Buffer) map[string
 		key, keyType := parseUpcomingProperty(reader)
 		val, _ := parseUpcomingProperty(reader)
 		// Ensure we are reading a string
-		if keyType.String() != "STRING" {
+		if keyType != BENC_STRING {
 			log.Println("Failed reading key, not a string")
 		}
 
@@ -166,19 +163,41 @@ func MapTorrentFile(reader *bufio.Reader) map[string]any {
 	return torrentInfo.(map[string]any)
 }
 
-func DecodeTorrentFile(filename string) proto_structs.MetaInfo {
+func DecodeTorrentFile(filename string) *proto_structs.MetaInfo {
 	reader := OpenTorrentFile(filename)
-	MapTorrentFile(reader) // TODO: Assign to variable
+	parsedTorrent := MapTorrentFile(reader)
+
+	//for k, v := range parsedTorrent {
+	//	fmt.Printf("%s: %q\n", k, v)
+	//}
+
+	//pieces := parsedTorrent["info"].(map[string]any)["pieces"].(string)
+	//parsedTorrent["info"].(map[string]any)["pieces"] = []byte(pieces)
+	//for pieces.Len() > 0 {
+	//	buf := [20]byte{}
+	//	n, err := io.ReadFull(pieces, buf[:])
+	//	if err != nil {
+	//		fmt.Println("Err:", err)
+	//	}
+	//	fmt.Println(n, string(buf[:]))
+	//
+	//}
+	res := &proto_structs.MetaInfo{}
+	err := mapstructure.Decode(parsedTorrent, res)
+	if err != nil {
+		log.Println(err)
+	}
+
 	// TODO: Map out torrentInfo data to MetaInfo
-	return proto_structs.MetaInfo{}
+	return res
 }
 
-func main() {
+func printSampleMI() {
 	mi := proto_structs.MetaInfo{
 		Info: &proto_structs.Info{
 			Name:        "name123",
 			PieceLength: 1324,
-			Pieces:      []string{"adf", "fsdfd"},
+			//Pieces:      []string{"adf", "fsdfd"},
 			Data: &proto_structs.Info_Files{
 				Files: &proto_structs.FileInfos{Infos: []*proto_structs.FileInfo{
 					{Length: 999, Path: "path/to/file"},
@@ -188,4 +207,13 @@ func main() {
 		Announce: "announce",
 	}
 	log.Println(mi.String())
+}
+
+func main() {
+	//printSampleMI()
+
+	metainf := DecodeTorrentFile("torrents/big-buck-bunny.torrent") // len(pieces) = 21100 -> 1055 pieces
+	//metainf := DecodeTorrentFile("torrents/sample.torrent") // len(pieces) = 60 -> 60/20 = 3 pieces
+	fmt.Println(len(metainf.Info.Pieces))
+	//fmt.Printf("%v %T\n", metainf, metainf)
 }
