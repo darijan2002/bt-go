@@ -171,9 +171,9 @@ func DecodeTorrentFile(filename string) *proto_structs.MetaInfo {
 	log.Println("'pieces' field has", len(pieces), "characters")
 	n := len(pieces) / 20
 
-	list := make([][]byte, n)
+	list := make([][20]byte, n)
 	for i := 0; i < n; i++ {
-		list[i] = pieces[20*i : 20*(i+1)]
+		list[i] = [20]byte(pieces[20*i : 20*(i+1)])
 	}
 	parsedTorrent["info"].(map[string]any)["pieces"] = list
 
