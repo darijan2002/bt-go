@@ -10,4 +10,4 @@ compile:
 
 # Generates the protobuf structs defined in the protos folder
 proto:
-	@protoc --go_out=. --proto_path=.\protos/ ./protos/*.proto	
+	@protoc --go_out=. --proto_path=./protos/ ./protos/*.proto	

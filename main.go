@@ -11,8 +11,28 @@ import (
 	"strings"
 )
 
-type BencListElement interface {
-	int32 | string
+func parseUpcomingProperty(reader *bufio.Reader) (any, BencDataType) {
+	buf := bytes.NewBuffer(make([]byte, 0, 256))
+	rune, _, err := reader.ReadRune()
+	if err != nil {
+		log.Println("Error while reading initial rune")
+	}
+
+	buf.WriteRune(rune)
+
+	if _, err := strconv.Atoi(string(rune)); err == nil {
+		return decodeBencString(reader, buf), BencDataType(STRING)
+	}
+
+	switch rune {
+	case 'i':
+		return decodeBencInt(reader, buf), BencDataType(INT)
+	case 'l':
+		return decodeBencList(reader, buf), BencDataType(LIST)
+		// TODO: Expand with dictionary
+	}
+
+	return nil, BencDataType(UNKNOWN)
 }
 
 func decodeBencString(reader *bufio.Reader, buffer *bytes.Buffer) string {
@@ -27,7 +47,7 @@ func decodeBencString(reader *bufio.Reader, buffer *bytes.Buffer) string {
 	}
 	size, err := strconv.Atoi(fs)
 	if err != nil {
-		log.Println("Error during conversion")
+		log.Printf("Error during conversion: %e", err)
 	}
 
 	// Read that many runes off reader
@@ -73,19 +93,25 @@ func decodeBencInt(reader *bufio.Reader, buffer *bytes.Buffer) int {
 	return number
 }
 
-// TODO: Figure out how to have a list with 2 potential type elements,
-// one option is custom struct which will provide both as separate properties
-func decodeBencList(reader *bufio.Reader, buffer *bytes.Buffer) {
-	// TODO: Empty out buffer
+func decodeBencList(reader *bufio.Reader, buffer *bytes.Buffer) []any {
+	// Empty out buffer
 	buffer.Reset()
 
-	// TODO: Read data from reader and add to buffer
+	data := []any{}
+	for true {
+		rune, _, err := reader.ReadRune()
+		// Once we hit an 'e', return the list of data
+		if err != nil || rune == 'e' {
+			break
+		}
+		reader.UnreadRune()
+		// Once we found a new property, pass to proper decoder
+		item, _ := parseUpcomingProperty(reader)
+		// Add property/value to our list
+		data = append(data, item)
+	}
 
-	// TODO: Once we found a new property, pass to proper decoder
-
-	// TODO: Add property/value to our list
-
-	// TODO: Once we hit an 'e', return the list of data
+	return data
 }
 
 func decodeBencDictionary(reader *bufio.Reader, buffer *bytes.Buffer) {
@@ -99,28 +125,6 @@ func decodeBencDictionary(reader *bufio.Reader, buffer *bytes.Buffer) {
 	// TODO: Once we have 2 pairs, add to dictionary
 
 	// TODO: Once we hit an 'e', return the list of data
-}
-
-func parseUpcomingProperty(reader *bufio.Reader) (string, int, BencDataType) {
-	buf := bytes.NewBuffer(make([]byte, 0, 256))
-	rune, _, err := reader.ReadRune()
-	if err != nil {
-		log.Println("Error while reading initial rune")
-	}
-
-	buf.WriteRune(rune)
-
-	if _, err := strconv.Atoi(strconv.QuoteRune(rune)); err == nil {
-		return decodeBencString(reader, buf), 0, BencDataType(INT)
-	}
-
-	switch rune {
-	case 'i':
-		return "", decodeBencInt(reader, buf), BencDataType(STRING)
-		// TODO: Expand with list and dictionary
-	}
-
-	return "", 0, BencDataType(UNKNOWN)
 }
 
 func DecodeTorrentFile(filename string) proto_structs.MetaInfo {

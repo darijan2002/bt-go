@@ -5,6 +5,7 @@ type BencDataType int
 const (
 	INT BencDataType = iota
 	STRING
+	LIST
 	UNKNOWN
 )
 
