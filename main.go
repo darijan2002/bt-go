@@ -4,7 +4,6 @@ import (
 	"benc2proto/proto_structs"
 	"bufio"
 	"bytes"
-	"fmt"
 	"github.com/mitchellh/mapstructure"
 	"io"
 	"log"
@@ -167,21 +166,17 @@ func DecodeTorrentFile(filename string) *proto_structs.MetaInfo {
 	reader := OpenTorrentFile(filename)
 	parsedTorrent := MapTorrentFile(reader)
 
-	//for k, v := range parsedTorrent {
-	//	fmt.Printf("%s: %q\n", k, v)
-	//}
+	// Split the pieces into arrays of 20 bytes each
+	pieces := []byte(parsedTorrent["info"].(map[string]any)["pieces"].(string))
+	log.Println("'pieces' field has", len(pieces), "characters")
+	n := len(pieces) / 20
 
-	//pieces := parsedTorrent["info"].(map[string]any)["pieces"].(string)
-	//parsedTorrent["info"].(map[string]any)["pieces"] = []byte(pieces)
-	//for pieces.Len() > 0 {
-	//	buf := [20]byte{}
-	//	n, err := io.ReadFull(pieces, buf[:])
-	//	if err != nil {
-	//		fmt.Println("Err:", err)
-	//	}
-	//	fmt.Println(n, string(buf[:]))
-	//
-	//}
+	list := make([][]byte, n)
+	for i := 0; i < n; i++ {
+		list[i] = pieces[20*i : 20*(i+1)]
+	}
+	parsedTorrent["info"].(map[string]any)["pieces"] = list
+
 	res := &proto_structs.MetaInfo{}
 	err := mapstructure.Decode(parsedTorrent, res)
 	if err != nil {
@@ -214,6 +209,6 @@ func main() {
 
 	metainf := DecodeTorrentFile("torrents/big-buck-bunny.torrent") // len(pieces) = 21100 -> 1055 pieces
 	//metainf := DecodeTorrentFile("torrents/sample.torrent") // len(pieces) = 60 -> 60/20 = 3 pieces
-	fmt.Println(len(metainf.Info.Pieces))
+	log.Println("Torrent has", len(metainf.Info.Pieces), "pieces")
 	//fmt.Printf("%v %T\n", metainf, metainf)
 }

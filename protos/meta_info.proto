@@ -15,7 +15,7 @@ message FileInfos {
 message Info {
   string name = 1;
   int32 piece_length = 2;
-  string pieces = 3;
+  repeated bytes pieces = 3;
 
   oneof Data {
     uint64 length = 4;
