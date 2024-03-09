@@ -11,6 +11,8 @@ import (
 	"strings"
 )
 
+// NOTE: Try to figure out where we can use defer to optimize performance by closing the files and readers which aren't in use any more
+
 func parseUpcomingProperty(reader *bufio.Reader) (any, BencDataType) {
 	buf := bytes.NewBuffer(make([]byte, 0, 256))
 	rune, _, err := reader.ReadRune()
@@ -29,7 +31,8 @@ func parseUpcomingProperty(reader *bufio.Reader) (any, BencDataType) {
 		return decodeBencInt(reader, buf), BencDataType(INT)
 	case 'l':
 		return decodeBencList(reader, buf), BencDataType(LIST)
-		// TODO: Expand with dictionary
+	case 'd':
+		return decodeBencDictionary(reader, buf), BencDataType(DICTIONARY)
 	}
 
 	return nil, BencDataType(UNKNOWN)
@@ -100,13 +103,18 @@ func decodeBencList(reader *bufio.Reader, buffer *bytes.Buffer) []any {
 	data := []any{}
 	for true {
 		rune, _, err := reader.ReadRune()
+
 		// Once we hit an 'e', return the list of data
 		if err != nil || rune == 'e' {
 			break
 		}
+
+		// rewind reader so we don't corrupt the pointer position
 		reader.UnreadRune()
+
 		// Once we found a new property, pass to proper decoder
 		item, _ := parseUpcomingProperty(reader)
+
 		// Add property/value to our list
 		data = append(data, item)
 	}
@@ -114,34 +122,54 @@ func decodeBencList(reader *bufio.Reader, buffer *bytes.Buffer) []any {
 	return data
 }
 
-func decodeBencDictionary(reader *bufio.Reader, buffer *bytes.Buffer) {
-	// TODO: Empty out buffer
+func decodeBencDictionary(reader *bufio.Reader, buffer *bytes.Buffer) map[string]any {
+	// Empty out buffer
 	buffer.Reset()
 
-	// TODO: Read data from reader and add to buffer
+	data := map[string]any{}
+	// Read data from reader and add to buffer
+	for true {
+		rune, _, err := reader.ReadRune()
 
-	// TODO: Once we found a new property, pass to proper decoder
+		// Once we hit an 'e', return the list of data
+		if err != nil || rune == 'e' {
+			break
+		}
+		// Rewind reader pointer so we don't corrupt data reading flow when parsing
+		reader.UnreadRune()
 
-	// TODO: Once we have 2 pairs, add to dictionary
+		// Parse the key and value
+		key, keyType := parseUpcomingProperty(reader)
+		val, _ := parseUpcomingProperty(reader)
+		// Ensure we are reading a string
+		if keyType.String() != "STRING" {
+			log.Println("Failed reading key, not a string")
+		}
 
-	// TODO: Once we hit an 'e', return the list of data
+		// Cast key to string and assign in 'data'
+		data[key.(string)] = val
+	}
+	return data
 }
 
-func DecodeTorrentFile(filename string) proto_structs.MetaInfo {
-	// TODO: Open file reader
+func OpenTorrentFile(filename string) *bufio.Reader {
 	file, err := os.Open(filename)
 	if err != nil {
 		log.Println("Error while reading file")
 	}
 
-	reader := bufio.NewReader(file)
+	return bufio.NewReader(file)
+}
 
-	parseUpcomingProperty(reader)
-	// TODO: Check line type
+func MapTorrentFile(reader *bufio.Reader) map[string]any {
+	torrentInfo, _ := parseUpcomingProperty(reader)
+	return torrentInfo.(map[string]any)
+}
 
-	// TODO: Process line properly (aka, if d<bencode>e, decode as map)
-
-	// TODO: Repeat
+func DecodeTorrentFile(filename string) proto_structs.MetaInfo {
+	reader := OpenTorrentFile(filename)
+	MapTorrentFile(reader) // TODO: Assign to variable
+	// TODO: Map out torrentInfo data to MetaInfo
 	return proto_structs.MetaInfo{}
 }
 

@@ -6,6 +6,7 @@ const (
 	INT BencDataType = iota
 	STRING
 	LIST
+	DICTIONARY
 	UNKNOWN
 )
 
