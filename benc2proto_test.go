@@ -1,4 +1,4 @@
-package benc2proto
+package main
 
 import (
 	"bufio"

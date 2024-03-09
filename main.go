@@ -1,7 +1,7 @@
-package benc2proto
+package main
 
 import (
-	proto_structs "benc2proto/proto-structs"
+	"benc2proto/proto_structs"
 	"bufio"
 	"bytes"
 	"io"

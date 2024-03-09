@@ -1,7 +1,7 @@
 syntax = "proto3";
 package proto_structs;
 
-option go_package = "./proto-structs";
+option go_package = "./proto_structs";
 
 message FileInfo {
   uint64 length = 1;
