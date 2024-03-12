@@ -4,12 +4,15 @@ import (
 	"benc2proto/proto_structs"
 	"bufio"
 	"bytes"
-	"github.com/mitchellh/mapstructure"
+	"crypto/sha1"
 	"io"
 	"log"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/mitchellh/mapstructure"
+	"google.golang.org/protobuf/proto"
 )
 
 // NOTE: Try to figure out where we can use defer to optimize performance by closing the files and readers which aren't in use any more
@@ -183,25 +186,19 @@ func DecodeTorrentFile(filename string) *proto_structs.MetaInfo {
 		log.Println(err)
 	}
 
-	// TODO: Map out torrentInfo data to MetaInfo
 	return res
 }
 
-func printSampleMI() {
-	mi := proto_structs.MetaInfo{
-		Info: &proto_structs.Info{
-			Name:        "name123",
-			PieceLength: 1324,
-			//Pieces:      []string{"adf", "fsdfd"},
-			Data: &proto_structs.Info_Files{
-				Files: &proto_structs.FileInfos{Infos: []*proto_structs.FileInfo{
-					{Length: 999, Path: "path/to/file"},
-				}},
-			},
-		},
-		Announce: "announce",
+func HashInfo(info *proto_structs.Info) [20]byte {
+	// Encode info to protobuf
+	info_encoded, err := proto.Marshal(info)
+	if err != nil {
+		log.Panicln("Failed to encode info struct to wire enc!")
 	}
-	log.Println(mi.String())
+
+	// Hash with SHA1
+	hash := sha1.Sum(info_encoded)
+	return hash
 }
 
 func main() {
@@ -211,4 +208,7 @@ func main() {
 	//metainf := DecodeTorrentFile("torrents/sample.torrent") // len(pieces) = 60 -> 60/20 = 3 pieces
 	log.Println("Torrent has", len(metainf.Info.Pieces), "pieces")
 	//fmt.Printf("%v %T\n", metainf, metainf)
+
+	hash := HashInfo(metainf.Info)
+	log.Println("Hash of info struct:", hash, len(hash))
 }
