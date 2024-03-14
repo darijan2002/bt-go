@@ -1,24 +1,14 @@
-package torrent
+package main
 
 import (
 	"benc2proto/proto_structs"
 	"bufio"
-	"bytes"
 	"crypto/sha1"
-	"io"
 	"log"
 	"os"
-	"strconv"
-	"strings"
 
 	"github.com/mitchellh/mapstructure"
 	"google.golang.org/protobuf/proto"
-
-	"fmt"
-    "io/ioutil"
-    "net/http"
-	"decode"
-	"peers"
 )
 
 func OpenTorrentFile(filename string) *bufio.Reader {
@@ -31,7 +21,7 @@ func OpenTorrentFile(filename string) *bufio.Reader {
 }
 
 func MapTorrentFile(reader *bufio.Reader) map[string]any {
-	torrentInfo, _ := decode.parseUpcomingProperty(reader)
+	torrentInfo, _ := parseUpcomingProperty(reader)
 	return torrentInfo.(map[string]any)
 }
 

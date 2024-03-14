@@ -1,24 +1,12 @@
-package decode
+package main
 
 import (
-	"benc2proto/proto_structs"
 	"bufio"
 	"bytes"
-	"crypto/sha1"
 	"io"
 	"log"
-	"os"
 	"strconv"
 	"strings"
-
-	"github.com/mitchellh/mapstructure"
-	"google.golang.org/protobuf/proto"
-
-	"fmt"
-    "io/ioutil"
-    "net/http"
-
-	"main"
 )
 
 func parseUpcomingProperty(reader *bufio.Reader) (any, BencDataType) {
